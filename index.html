@@ -750,6 +750,28 @@ button{font-family:inherit;line-height:1.4}
 .relic-picker-body small{font-size:14px;line-height:1.5}
 .relic-picker-body .btn{font-size:14px;min-height:45px;line-height:1.45}
 .collection-story{font-size:14px;line-height:1.7;overflow-wrap:anywhere}
+
+.collection-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.collection-item{display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;align-items:center;padding:10px 0;border-bottom:1px dashed #d7cbb2}
+.collection-item:last-child{border-bottom:none}
+.collection-art{width:84px;height:84px;display:flex;align-items:center;justify-content:center;border-radius:18px;background:#f7efdd;padding:6px;box-shadow:inset 0 0 0 2px #f1e4c9}
+.collection-art.is-hidden{background:#f3eee3}
+.collection-art .relic-image{width:100%;height:100%;object-fit:contain}
+.collection-copy{min-width:0}
+.collection-name{display:block;font-size:17px;line-height:1.45;color:#4f3f2f;font-weight:950;margin-bottom:4px}
+.collection-story{display:block;font-size:14px;line-height:1.75;overflow-wrap:anywhere}
+.collection-state{display:block;font-size:13px;font-weight:900;color:#5d8759;margin-bottom:4px}
+@media(max-width:580px){
+  .collection-item{grid-template-columns:76px minmax(0,1fr);gap:10px}
+  .collection-art{width:76px;height:76px;border-radius:16px}
+  .collection-name{font-size:16px}
+  .collection-story{font-size:14px;line-height:1.7}
+}
+@media(max-width:360px){
+  .collection-item{grid-template-columns:1fr;align-items:start}
+  .collection-art{width:112px;height:112px;margin:0 auto 4px}
+}
+
 .toast{font-size:14px;line-height:1.5}
 .record-ribbon{font-size:13px}
 /* Keep the stylized headline without letting decorative copy compete with play. */
@@ -891,8 +913,8 @@ const RELICS=[
  {id:'compass',name:'芽吹きの羅針盤',kind:'count',need:5,short:'数字を5個',effect:'',story:'針が指し示すのは、まだ名前のついていない場所。迷った旅人に、ちいさな発見を届けるといいます。'},
  {id:'mirror',name:'月映しの手鏡',kind:'count',need:7,short:'数字を7個',effect:'',story:'昼間でも月が映る古い手鏡。覗き込むと、忘れかけた景色がひとつだけ浮かぶそうです。'},
  {id:'crown',name:'星つむぎの王冠',kind:'count',need:9,short:'数字を9個',effect:'',story:'王さまではなく、星を愛した庭師に贈られた王冠。小さな宝石には、五つの季節の夜空が宿っています。'},
- {id:'key',name:'封印ほどきの鍵',kind:'streak',need:4,short:'4個連続',effect:'封印を1つ解除できる',story:'古い石の扉を、音もなく開く緑の鍵。錆びついた道にも、もう一度春が訪れるようです。'},
- {id:'bottle',name:'泉のしずく瓶',kind:'streak',need:6,short:'6個連続',effect:'封印を1つ解除できる',story:'どれだけ傾けてもこぼれない、水色のしずく。閉じられた道を一つだけ潤し、再び通れるようにします。'}
+ {id:'key',name:'封印ほどきの鍵',kind:'streak',need:4,short:'4個連続',effect:'持ち帰ったとき、封印を1つ解除',story:'古い石の扉を、音もなく開く緑の鍵。錆びついた道にも、もう一度春が訪れるようです。'},
+ {id:'bottle',name:'泉のしずく瓶',kind:'streak',need:6,short:'6個連続',effect:'持ち帰ったとき、封印を1つ解除',story:'どれだけ傾けてもこぼれない、水色のしずく。閉じられた道を一つだけ潤し、再び通れるようにします。'}
 ];
 // Five official illustrations supplied by the creator, converted to transparent WebP.
 const RELIC_ART={
@@ -974,7 +996,7 @@ function treasureHtml(r){
  return `<article data-relic="${r.id}" class="treasure ${got?'obtained':can?'eligible':blocked?'unreachable':'incomplete'}">
    <div class="relicart">${relicArt(r.id)}<span class="relic-number" aria-hidden="true">${number}</span></div>
    <div class="treasure-info"><div class="treasure-top"><h3 class="treasure-name">${r.name}</h3><span class="tag ${got?'got':can?'ready':blocked?'blocked':''}">${status}</span></div>
-   <p class="treasure-desc">${desc}${r.effect?' · 封印解除':''}</p>
+   <p class="treasure-desc">${desc}${r.effect?' · '+r.effect:''}</p>
    <div class="relic-meter"><span class="relic-meter-title">${got?'✦ みつけた！':'✦ お宝ゲージ'}</span><span data-relic-progress="${r.id}" class="relic-meter-count">${got?'★ コンプリート':`${display} / ${r.need}`}</span></div>
    <div class="relic-beads" aria-hidden="true">${beads}</div>
    <div class="progress-track" aria-label="${r.name}の進行度 ${got?'獲得済み':display+'／'+r.need}"><div class="progress-fill" style="width:${got?100:Math.max(0,display/r.need*100)}%"></div></div>
@@ -1032,11 +1054,12 @@ function details(id){const r=RELICS.find(x=>x.id===id);if(!r)return;const got=ga
 function pickRelic(){
  const items=availableRelics();if(!items.length)return;
  if(items.length===1){collect(items[0].id);return;}
- renderDialog(`<h3 id="modal-title">✦ どの秘宝を持ち帰る？</h3><p>今回持ち帰れるのはひとつだけ。選ばなければ探検を続けられます。</p><div class="relic-picker-list">${items.map(r=>`<div class="relic-picker-item"><div class="relic-picker-art">${relicArt(r.id)}</div><div class="relic-picker-body"><strong>${r.name}</strong><small>${r.kind==='count'?`${r.need}個チェック`:`${r.need}個連続チェック`}${r.effect?' · 封印を解除':''}</small><button class="btn gold" data-collect="${r.id}">この秘宝を持ち帰る</button></div></div>`).join('')}</div><button class="btn ghost full" data-close="1">まだ探検を続ける</button>`);
+ renderDialog(`<h3 id="modal-title">✦ どの秘宝を持ち帰る？</h3><p>今回持ち帰れるのはひとつだけ。選ばなければ探検を続けられます。</p><div class="relic-picker-list">${items.map(r=>`<div class="relic-picker-item"><div class="relic-picker-art">${relicArt(r.id)}</div><div class="relic-picker-body"><strong>${r.name}</strong><small>${r.kind==='count'?`${r.need}個チェック`:`${r.need}個連続チェック`}${r.effect?' · '+r.effect:''}</small><button class="btn gold" data-collect="${r.id}">この秘宝を持ち帰る</button></div></div>`).join('')}</div><button class="btn ghost full" data-close="1">まだ探検を続ける</button>`);
 }
-function showHow(){renderDialog(`<h3 id="modal-title">✿ あそびかた</h3><p>ダイス2個を振り、12枚の石板にチェックをつける、ひとり用の宝探しです。</p><div class="biginfo"><b>① ダイスを2個振る</b><br>出た目の「片方」「両方」「合計」のどれかを選びます。たとえば3と4なら、3・4・3と4の両方・7からひとつ選べます。<br><br><b>② 宝物を持ち帰る</b><br>必要なチェックを集めると秘宝をひとつ持ち帰れます。もっと欲張って振り続けてもOK！<br><br><b>③ 封印に気をつける</b><br>チェック可能な数字がないと失敗。封印する数字を選びます。振る前に撤退しても封印が一つ増えます。<br><br><b>④ 五つの秘宝を集めよう</b><br>宝物は一度ずつしか持ち帰れません。封印が3つになる前に五つ集めれば勝利！</div><p class="muted">※ひとつの数字は同じ探検中に二度チェックできません。封印された数字は次の探検でもチェックできません。探検が終わるとチェックは消え、封印だけ残ります。<br>※4個連続・6個連続の秘宝は、たとえば3・4・5・6のように連なるチェックが必要です。<br>※出目に対応するチェック済み数字がない特殊な失敗時は、任意の未封印数字を選んで封印します（デジタル版の補助ルール）。</p><button class="btn primary full" data-close="1">わかりました！</button>`);}
+function showHow(){renderDialog(`<h3 id="modal-title">✿ あそびかた</h3><p>ダイス2個を振り、12枚の石板にチェックをつける、ひとり用の宝探しです。</p><div class="biginfo"><b>① ダイスを2個振る</b><br>出た目の「片方」「両方」「合計」のどれかを選びます。たとえば3と4なら、3・4・3と4の両方・7からひとつ選べます。<br><br><b>② 宝物を持ち帰る</b><br>必要なチェックを集めると秘宝をひとつ持ち帰れます。もっと欲張って振り続けてもOK！<br><br><b>③ 封印に気をつける</b><br>チェック可能な数字がないと失敗。封印する数字を選びます。振る前に撤退しても封印が一つ増えます。<br><br><b>④ 五つの秘宝を集めよう</b><br>宝物は一度ずつしか持ち帰れません。封印が3つになる前に五つ集めれば勝利！</div><p class="muted">※ひとつの数字は同じ探検中に二度チェックできません。封印された数字は次の探検でもチェックできません。探検が終わるとチェックは消え、封印だけ残ります。<br>※4個連続・6個連続の秘宝は、たとえば3・4・5・6のように連なるチェックが必要です。
+※「封印ほどきの鍵」「泉のしずく瓶」は、持ち帰ったときにその場で封印を1つ解除できます。<br>※出目に対応するチェック済み数字がない特殊な失敗時は、任意の未封印数字を選んで封印します（デジタル版の補助ルール）。</p><button class="btn primary full" data-close="1">わかりました！</button>`);}
 function showRecord(){renderDialog(`<h3 id="modal-title">★ 探検のきろく</h3><div class="biginfo"><div class="mini-stat"><span>クリア回数</span><strong>${stats.wins}回</strong></div><div class="mini-stat"><span>ゲームオーバー回数</span><strong>${stats.losses}回</strong></div><div class="mini-stat"><span>累計探検回数</span><strong>${stats.totalRuns}回</strong></div><div class="mini-stat"><span>ダイスを振った回数</span><strong>${stats.totalRolls}回</strong></div><div class="mini-stat"><span>最少クリア探検回数</span><strong>${stats.bestRuns==null?'まだ記録なし':stats.bestRuns+'回'}</strong></div></div><p class="muted">結果はこのブラウザ内に保存されます。別の端末へは自動同期しません。</p><button class="btn soft full" data-close="1">戻る</button>`);}
-function showCollection(){renderDialog(`<h3 id="modal-title">✦ 小さな展示室</h3><p>見つけた秘宝を飾っておく、小さな展示室です。</p>${RELICS.map(r=>`<div style="display:flex;align-items:center;gap:10px;border-bottom:1px dashed #d7cbb2;padding:8px 0"><div style="width:84px;min-width:84px;filter:${game.relics.includes(r.id)?'none':'grayscale(.9) opacity(.45)'}">${relicArt(r.id)}</div><div><b>${r.name}</b><br><span class="muted collection-story">${game.relics.includes(r.id)?'✦ 発見済み · '+r.story:'まだ見つかっていません'}</span></div></div>`).join('')}<button class="btn soft full" style="margin-top:18px" data-close="1">展示室を出る</button>`);}
+function showCollection(){renderDialog(`<h3 id="modal-title">✦ 小さな展示室</h3><p>見つけた秘宝を飾っておく、小さな展示室です。</p><div class="collection-list">${RELICS.map(r=>{const found=game.relics.includes(r.id);return `<div class="collection-item"><div class="collection-art ${found?'':'is-hidden'}" style="filter:${found?'none':'grayscale(.9) opacity(.45)'}">${relicArt(r.id)}</div><div class="collection-copy"><strong class="collection-name">${r.name}</strong>${found?'<span class="collection-state">✦ 発見済み</span><span class="muted collection-story">'+r.story+'</span>':'<span class="muted collection-story">まだ見つかっていません</span>'}</div></div>`;}).join('')}</div><button class="btn soft full" style="margin-top:18px" data-close="1">展示室を出る</button>`);}
 function showSettings(){renderDialog(`<h3 id="modal-title">⚙ せってい</h3><div class="biginfo"><label style="display:flex;gap:12px;align-items:center;cursor:pointer"><input type="checkbox" id="pref-animation" ${prefs.animations?'checked':''} style="width:22px;height:22px"/><span><b>アニメーション</b><br><span class="muted">ダイスやメッセージの動きを使用します。</span></span></label></div><p>ゲームは操作のたびに自動保存されます。ネット接続は必要ありません。</p><button class="btn warning full" data-menu="confirm-reset">進行中の冒険を最初からやり直す</button><p class="tips">「最初から」にしても、クリア回数などの累計記録は残ります。</p><button class="btn soft full" style="margin-top:16px" data-close="1">戻る</button>`);}
 function confirmReset(){renderDialog(`<h3 id="modal-title">冒険を最初から始めますか？</h3><p>現在集めた秘宝・チェック・封印がすべて消え、最初の探検からやり直します。累計記録は残ります。</p><div class="btn-row"><button class="btn ghost" data-close="1">キャンセル</button><button class="btn warning" data-act="confirm-reset">最初からにする</button></div>`);}
 function confirmAgain(){renderDialog(`<h3 id="modal-title">新しい冒険を始めますか？</h3><p>五つの秘宝を再び探しに出かけます。クリア記録は残ります。</p><div class="btn-row"><button class="btn ghost" data-close="1">戻る</button><button class="btn primary" data-act="confirm-again">新しい冒険へ</button></div>`);}
